@@ -164,6 +164,14 @@ function initToday() {
 // ---- 增删 ----
 // 新增action
 function addNewAction() {
+  const hasIncomplete = today.value.items.some(it =>
+    !it.part || !it.action ||
+    !(Number(it.weight) > 0) || !(Number(it.group) > 0) || !(Number(it.reps) > 0)
+  )
+  if (hasIncomplete) {
+    ElMessage.warning('请先完善当前训练记录，再添加新的记录')
+    return
+  }
   today.value.items.push({
     id: Date.now().toString(),
     part:'',
