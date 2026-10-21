@@ -1,8 +1,8 @@
 <template>
   <div class="app">
-    <header class="header">
-      <h1>🏋️ 我的健身记录</h1>
-      <div class="tabs">
+    <header class="app-header">
+      <h1 class="app-title">🏋️ 我的健身记录</h1>
+      <nav class="tabs">
         <button
           v-for="t in tabs"
           :key="t.key"
@@ -10,101 +10,120 @@
           :disabled="t.disabled"
           @click="currentTab = t.key"
         >{{ t.label }}</button>
-      </div>
+      </nav>
     </header>
 
     <!-- 记录视图 -->
-    <!-- ① 今天:保存前可编辑的表格 -->
     <section v-if="currentTab === 'record'" class="panel">
-      <div style="display: flex; justify-content: space-between;">
-        <span>今天：{{ today.date }}</span>
-        <span>总容量：{{ dayTotalVolume(today) }}</span>
-        <el-button class="mt-4" type="success" @click="addWorkout()">训练完成</el-button>
-      </div>
-      <el-table :data="today.items">
-        <el-table-column prop="part" label="部位">
-          <template #default="{ row }">
-            <el-input v-model="row.part" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="action" label="动作">
-          <template #default="{ row }">
-            <el-input v-model="row.action" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="weight" label="重量">
-          <template #default="{ row }">
-            <el-input v-model="row.weight" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="reps" label="次数">
-          <template #default="{ row }">
-            <el-input v-model="row.reps" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="group" label="组数">
-          <template #default="{ row }">
-            <el-input v-model="row.group" />
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100">
-          <template #default="{ row }">
-            <el-button text type="warning" @click="deleteAction(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-button class="mt-4" style="width: 100%" type="warning" text @click="addNewAction()">新增记录</el-button>
+      <!-- ① 今天 -->
+      <div class="card">
+        <div class="today-bar">
+          <div class="today-meta">
+            <span class="today-label">今天</span>
+            <span class="today-date">{{ today.date }}</span>
+            <span class="today-volume">总容量 <b>{{ dayTotalVolume(today) }}</b></span>
+          </div>
+          <el-button type="success" @click="addWorkout()">训练完成</el-button>
+        </div>
 
-      <header class="header">
-        <h1>历史健身记录</h1>
-        <el-button @click="exportData">导出备份</el-button>
-        <el-button @click="$refs.fileInput.click()">导入备份</el-button>
-        <input ref="fileInput" type="file" accept=".json,application/json" style="display:none" @change="importData" />
-      </header>
-      <h5>目前已坚持锻炼{{ savedDays.length }}次！</h5>
-      <!-- ② 历史:已保存天的折叠列表 -->
-      <el-table :data="savedDays" border>
-        <el-table-column type="expand" prop="id">
-          <template #default="props">
-            <div class="4">
-              <p v-for="item in props.row.items" :key="item.id" class="t-0 b-2">
-                {{ item.part }} 部训练，{{ item.action }}: {{ item.weight }}kg x {{ item.reps }} 次 x {{ item.group }} 组
-              </p>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="date" label="时间"></el-table-column>
-        <el-table-column prop="total" label="总容量"></el-table-column>
-        <el-table-column label="操作" width="100">
-          <template #default="{ row }">
-            <el-button text type="warning" @click="deleteWorkout(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+        <el-table :data="today.items" class="app-table">
+          <el-table-column prop="part" label="部位">
+            <template #default="{ row }"><el-input v-model="row.part" /></template>
+          </el-table-column>
+          <el-table-column prop="action" label="动作">
+            <template #default="{ row }"><el-input v-model="row.action" /></template>
+          </el-table-column>
+          <el-table-column prop="weight" label="重量">
+            <template #default="{ row }"><el-input v-model="row.weight" /></template>
+          </el-table-column>
+          <el-table-column prop="reps" label="次数">
+            <template #default="{ row }"><el-input v-model="row.reps" /></template>
+          </el-table-column>
+          <el-table-column prop="group" label="组数">
+            <template #default="{ row }"><el-input v-model="row.group" /></template>
+          </el-table-column>
+          <el-table-column label="操作" width="90">
+            <template #default="{ row }">
+              <el-button text type="warning" @click="deleteAction(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <el-button class="add-btn" type="warning" text @click="addNewAction()">＋ 新增记录</el-button>
+      </div>
+
+      <!-- ② 历史 -->
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">📝 历史健身记录</h2>
+          <div class="head-actions">
+            <el-button @click="exportData">导出备份</el-button>
+            <el-button @click="$refs.fileInput.click()">导入备份</el-button>
+            <input ref="fileInput" type="file" accept=".json,application/json" style="display:none" @change="importData" />
+          </div>
+        </div>
+
+        <p class="streak">🔥 目前已坚持锻炼 <b>{{ savedDays.length }}</b> 次！</p>
+
+        <el-table :data="savedDays" border class="app-table">
+          <el-table-column type="expand" prop="id">
+            <template #default="props">
+              <div class="expand-box">
+                <div class="expand-item" v-for="item in props.row.items" :key="item.id">
+                  <span class="part-tag">{{ item.part }}</span>
+                  <span class="action-name">{{ item.action }}</span>
+                  <span class="detail">
+                    <span class="num"><b>{{ item.weight }}</b>kg</span>
+                    <i>×</i>
+                    <span class="num"><b>{{ item.reps }}</b>次</span>
+                    <i>×</i>
+                    <span class="num"><b>{{ item.group }}</b>组</span>
+                  </span>
+                  <span class="volume">
+                    容量 {{ (Number(item.weight) || 0) * (Number(item.group) || 0) * (Number(item.reps) || 0) }}
+                  </span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="date" label="时间"></el-table-column>
+          <el-table-column prop="total" label="总容量"></el-table-column>
+          <el-table-column label="操作" width="90">
+            <template #default="{ row }">
+              <el-button text type="warning" @click="deleteWorkout(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </section>
 
     <!-- 图表视图 -->
     <section v-if="currentTab === 'chart'" class="panel">
-      <div ref="lineRef" class="chart"></div>
-      <div ref="pieRef" class="chart"></div>
+      <div class="card"><div ref="lineRef" class="chart"></div></div>
+      <div class="card"><div ref="pieRef" class="chart"></div></div>
     </section>
 
     <!-- 日历视图 -->
     <section v-if="currentTab === 'calendar'" class="panel">
-      <el-calendar v-model="selectedDate">
-        <template #date-cell="{ data }">
-          <div class="cal-cell" :class="{ trained: isTrained(data.day) }">
-            {{ data.day.split('-')[2] }}
-          </div>
-        </template>
-      </el-calendar>
-      <p class="hint">绿点 = 当天有训练记录</p>
+      <div class="card">
+        <el-calendar v-model="selectedDate">
+          <template #date-cell="{ data }">
+            <div class="cal-cell" :class="{ trained: isTrained(data.day) }">
+              {{ data.day.split('-')[2] }}
+            </div>
+          </template>
+        </el-calendar>
+        <p class="hint">🟢 绿点 = 当天有训练记录</p>
+      </div>
     </section>
+    <!-- 回到顶部 -->
+    <transition name="fade">
+      <button v-show="showBackTop" class="back-top" @click="scrollToTop" aria-label="回到顶部">↑</button>
+    </transition>
   </div>
 </template>
-
 <script setup>
-import { ref, watch, onMounted, nextTick, computed } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import confetti from 'canvas-confetti' // 动效库
@@ -305,6 +324,9 @@ function renderCharts() {
       data: partPieData()
     }]
   })
+
+  line.resize()
+  pie.resize()
 }
 
 // ---- 日历 ----
@@ -361,18 +383,304 @@ watch(currentTab, async (v) => {
     renderCharts()
   }
 })
+
+// 窗口尺寸变化时，让图表跟着自适应
+function resizeCharts() {
+  if (lineRef.value) echarts.getInstanceByDom(lineRef.value)?.resize()
+  if (pieRef.value)  echarts.getInstanceByDom(pieRef.value)?.resize()
+}
+onMounted(() => window.addEventListener('resize', resizeCharts))
+onBeforeUnmount(() => window.removeEventListener('resize', resizeCharts))
+
+// ---- 回到顶部 ----
+const showBackTop = ref(false)
+function onScroll() {
+  showBackTop.value = window.scrollY > 300   // 滚动超过 300px 才显示
+}
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+onMounted(() => window.addEventListener('scroll', onScroll))
+onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <style scoped>
-.app { max-width: 900px; margin: 0 auto; padding: 24px; font-family: system-ui, "PingFang SC", sans-serif; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-.header h1 { font-size: 24px; }
-.tabs { display: flex; gap: 8px; }
-.tab { padding: 8px 18px; border: 1px solid #dcdfe6; border-radius: 8px; background: #fff; cursor: pointer; font-size: 15px; }
-.tab.active { background: #409eff; color: #fff; border-color: #409eff; }
-.toolbar { margin-bottom: 14px; }
-.chart { height: 300px; margin-bottom: 24px; }
-.cal-cell { text-align: center; }
-.cal-cell.trained { background: #67c23a; color: #fff; border-radius: 4px; }
-.hint { color: #909399; font-size: 13px; margin-top: 10px; }
+/* ================= 设计基调 ================= */
+.app {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  box-sizing: border-box;
+  font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #303133;
+  background: #f5f7fa;      /* 浅灰底，突出白卡片 */
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* ================= 顶部标题栏 ================= */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 0px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(245, 247, 250, .85);
+  backdrop-filter: blur(1px);
+}
+.app-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: .5px;
+}
+
+/* ================= Tab 导航 ================= */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+}
+.tab {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #606266;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.tab:hover { color: #409eff; background: #ecf5ff; }
+.tab.active {
+  background: #409eff;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, .35);
+}
+
+/* ================= 面板与卡片 ================= */
+.panel {
+  width: 100%;
+}
+.card {
+  width: 100%; box-sizing: border-box;
+  padding-bottom: 20px;
+}
+
+/* ================= 今日区 ================= */
+.today-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.today-meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.today-label { font-size: 15px; font-weight: 600; }
+.today-date { font-size: 13px; color: #909399; }
+.today-volume { font-size: 13px; color: #606266; }
+.today-volume b { color: #409eff; font-size: 18px; margin-left: 2px; }
+
+/* 新增记录：虚线按钮 */
+.add-btn {
+  width: 100%;
+  height: 42px;
+  margin-top: 12px;
+  border: 1px dashed #c8d6ea !important;
+  border-radius: 8px;
+  color: #409eff !important;
+  background: #fafcff !important;
+}
+.add-btn:hover {
+  background: #ecf5ff !important;
+  border-color: #409eff !important;
+}
+
+/* ================= 区块标题 ================= */
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+.head-actions { display: flex; gap: 8px; }
+
+.streak {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #606266;
+}
+.streak b { color: #e6a23c; font-size: 18px; margin: 0 2px; }
+
+/* ================= 表格统一 ================= */
+.app-table { border-radius: 10px; overflow: hidden; }
+.app-table :deep(.el-table__header th) {
+  background: #f7f9fc !important;
+  color: #606266;
+  font-weight: 600;
+}
+
+/* 统一所有按钮圆角 */
+:deep(.el-button) { border-radius: 8px; }
+
+/* ================= 图表 ================= */
+.chart { width: 100%; height: 320px; }
+
+/* ================= 日历 ================= */
+.cal-cell {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all .2s;
+}
+.cal-cell.trained {
+  background: #67c23a;
+  color: #fff;
+  font-weight: 600;
+}
+.hint {
+  color: #909399;
+  font-size: 13px;
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+/* ================= 展开行 ================= */
+.expand-box {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.expand-item {
+  display: grid;
+  grid-template-columns: 72px 130px 1fr 96px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f7f9fc;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #303133;
+}
+.part-tag {
+  justify-self: stretch;
+  text-align: center;
+  padding: 2px 0;
+  background: #ecf5ff;
+  color: #409eff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.action-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.detail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #606266;
+}
+.detail .num { min-width: 62px; white-space: nowrap; }
+.detail b { color: #409eff; font-weight: 600; }
+.detail i { color: #c0c4cc; font-style: normal; }
+.volume {
+  text-align: right;
+  font-size: 12px;
+  color: #909399;
+}
+/* 回到顶部 */
+.back-top {
+  position: fixed;
+  right: 24px;
+  bottom: 32px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #409eff;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, .45);
+  z-index: 100;
+  transition: all .2s;
+}
+.back-top:hover {
+  background: #337ecc;
+  transform: translateY(-2px);
+}
+.fade-enter-active,
+.fade-leave-active { transition: opacity .25s; }
+.fade-enter-from,
+.fade-leave-to { opacity: 0; }
+
+/* ================= 手机端 ================= */
+@media (max-width: 640px) {
+  .app { padding: 16px 12px 48px; }
+
+  /* 标题和 tab 竖排，tab 平分整行 */
+  .app-header { flex-direction: column; align-items: stretch; gap: 12px; }
+  .app-title { font-size: 19px; text-align: center; }
+  .tabs { width: 100%; }
+  .tab { flex: 1; padding: 8px 0; font-size: 14px; }
+
+  .card { padding: 14px; border-radius: 12px; }
+
+  /* 今日区竖排，"训练完成"拉满 */
+  .today-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+  .today-bar :deep(.el-button) { width: 100%; }
+
+  /* 历史区标题和按钮竖排，按钮平分 */
+  .section-head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .head-actions { display: flex; gap: 8px; }
+  .head-actions :deep(.el-button) { flex: 1; margin: 0; }
+
+  .chart { height: 260px; }
+
+  /* 展开行改两行：第一行 部位/动作/容量，第二行 详情 */
+  .expand-item {
+    grid-template-columns: 56px 1fr auto;
+    grid-template-areas:
+      "part action volume"
+      "detail detail detail";
+    row-gap: 6px;
+    column-gap: 8px;
+  }
+  .part-tag    { grid-area: part; }
+  .action-name { grid-area: action; }
+  .volume      { grid-area: volume; }
+  .detail      { grid-area: detail; }
+}
 </style>
