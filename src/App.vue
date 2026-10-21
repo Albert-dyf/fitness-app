@@ -57,7 +57,11 @@
 
       <header class="header">
         <h1>历史健身记录</h1>
+        <el-button @click="exportData">导出备份</el-button>
+        <el-button @click="$refs.fileInput.click()">导入备份</el-button>
+        <input ref="fileInput" type="file" accept=".json,application/json" style="display:none" @change="importData" />
       </header>
+      <h5>目前已坚持锻炼{{ savedDays.length }}次！</h5>
       <!-- ② 历史:已保存天的折叠列表 -->
       <el-table :data="savedDays" border>
         <el-table-column type="expand" prop="id">
@@ -72,7 +76,6 @@
         <el-table-column prop="date" label="时间"></el-table-column>
         <el-table-column prop="total" label="总容量"></el-table-column>
       </el-table>
-      <h5>目前已坚持锻炼{{ savedDays.length }}次！</h5>
     </section>
 
     <!-- 图表视图 -->
@@ -104,84 +107,12 @@ const tabs = [
   { key: 'chart', label: '图表', disabled: false},
   { key: 'calendar', label: '日历', disabled: false}
 ]
-// const currentTab = ref('record')
-const currentTab = ref('chart')
+const currentTab = ref('record')
+// const currentTab = ref('chart')
 // const currentTab = ref('calendar')
-const currentWeight= ref(0)
 
 // 数据结构:按天分组
-const workoutList = ref(JSON.parse(localStorage.getItem('workoutList')) || [
-  {
-    "id": "2026-10-18 14:26",
-    "date": "2026-10-18 14:26",
-    "total": 5900,
-    "items": [
-      {
-        "id": "1792333611936",
-        "part": "胸",
-        "action": "卧推",
-        "weight": "40",
-        "group": "4",
-        "reps": "12"
-      },
-      {
-        "id": "1792333632335",
-        "part": "胸",
-        "action": "蝴蝶机夹胸",
-        "weight": "40",
-        "group": "4",
-        "reps": "12"
-      },
-      {
-        "id": "1792333661230",
-        "part": "胸",
-        "action": "悍马机推胸",
-        "weight": "45",
-        "group": "4",
-        "reps": "8"
-      },
-      {
-        "id": "1792333680648",
-        "part": "肱三头",
-        "action": "绳索下压",
-        "weight": "15.5",
-        "group": "4",
-        "reps": "10"
-      }
-    ]
-  },
-  {
-    "id": "2026-10-18 14:19",
-    "date": "2026-10-18 14:19",
-    "total": 4480,
-    "items": [
-      {
-        "id": "1792333195826",
-        "part": "背",
-        "action": "引体",
-        "weight": "40",
-        "group": "5",
-        "reps": "8"
-      },
-      {
-        "id": "1792333208673",
-        "part": "背",
-        "action": "下拉",
-        "weight": "30",
-        "group": "4",
-        "reps": "12"
-      },
-      {
-        "id": "1792333228217",
-        "part": "背",
-        "action": "剪刀单臂下拉",
-        "weight": "30",
-        "group": "4",
-        "reps": "12"
-      }
-    ]
-  }
-])
+const workoutList = ref(JSON.parse(localStorage.getItem('workoutList')) || [])
 
 // 默认今天这组:当天日期 key,未保存
 const today = ref({
@@ -315,6 +246,35 @@ const selectedDate = ref(new Date())
 function isTrained(dayStr) {
   const prefix = dayStr.slice(0, 10)          // '2026-10-21'
   return workoutList.value.some(w => (w.date || '').slice(0, 10) === prefix)
+}
+
+// 导入导出
+function exportData() {
+  const data = JSON.stringify(workoutList.value, null, 2) // 缩进2格，方便人看
+  const blob = new Blob([data], { type: 'application/json' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `fitness-backup-${new Date().toISOString().slice(0, 10)}.json` // 带日期文件名
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+function importData(event) {
+  const file = event.target.files[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result)          // 解析
+      if (!Array.isArray(parsed)) throw new Error('格式不对') // 最简单的校验
+      workoutList.value = parsed                          // 覆盖现有数据
+      // localStorage 由你的 watch 自动更新，不用手动 set
+      alert(`导入成功，共 ${parsed.length} 天记录`)
+    } catch (err) {
+      alert('导入失败：文件不是有效的备份格式')
+    }
+  }
+  reader.readAsText(file)
 }
 
 // 初始进来时，如果当前就在图表页，先渲染一次
