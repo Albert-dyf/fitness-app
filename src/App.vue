@@ -11,6 +11,8 @@
           @click="currentTab = t.key"
         >{{ t.label }}</button>
       </nav>
+      <el-button v-if="!pro" size="small" type="warning" plain @click="goPurchase">解锁 Pro</el-button>
+      <span v-else class="pro-badge">PRO</span>
     </header>
 
     <!-- 备份提醒 -->
@@ -109,28 +111,61 @@
     </section>
 
     <!-- 图表视图 -->
-    <section v-if="currentTab === 'chart'" class="panel">
-      <div class="card"><div ref="lineRef" class="chart"></div></div>
-      <div class="card"><div ref="pieRef" class="chart"></div></div>
+     <section v-if="currentTab === 'chart'" class="panel">
+      <template v-if="pro">
+        <div class="card"><div ref="lineRef" class="chart"></div></div>
+        <div class="card"><div ref="pieRef" class="chart"></div></div>
+      </template>
+      <div v-else class="card lock-card">
+        <div class="lock-icon">📊</div>
+        <h3>图表分析是 Pro 功能</h3>
+        <p>解锁后查看各部位容量趋势、训练占比，直观看到进步曲线。</p>
+        <div class="lock-btns">
+          <el-button type="warning" @click="goPurchase">¥6.6 立即解锁</el-button>
+          <el-button text @click="showActivate = true">我已有激活码</el-button>
+        </div>
+      </div>
     </section>
 
     <!-- 日历视图 -->
-    <section v-if="currentTab === 'calendar'" class="panel">
-      <div class="card">
-        <el-calendar v-model="selectedDate">
-          <template #date-cell="{ data }">
-            <div class="cal-cell" :class="{ trained: isTrained(data.day) }">
-              {{ data.day.split('-')[2] }}
-            </div>
-          </template>
-        </el-calendar>
-        <p class="hint">🟢 绿点 = 当天有训练记录</p>
+     <section v-if="currentTab === 'calendar'" class="panel">
+      <template v-if="pro">
+        <div class="card">
+          <el-calendar v-model="selectedDate">
+            <template #date-cell="{ data }">
+              <div class="cal-cell" :class="{ trained: isTrained(data.day) }">
+                {{ data.day.split('-')[2] }}
+              </div>
+            </template>
+          </el-calendar>
+          <p class="hint">🟢 绿点 = 当天有训练记录</p>
+        </div>
+      </template>
+      <div v-else class="card lock-card">
+        <div class="lock-icon">🗓️</div>
+        <h3>训练日历是 Pro 功能</h3>
+        <p>解锁后用绿点回看你的坚持轨迹，养成训练习惯。</p>
+        <div class="lock-btns">
+          <el-button type="warning" @click="goPurchase">¥6.6 立即解锁</el-button>
+          <el-button text @click="showActivate = true">我已有激活码</el-button>
+        </div>
       </div>
     </section>
     <!-- 回到顶部 -->
     <transition name="fade">
       <button v-show="showBackTop" class="back-top" @click="scrollToTop" aria-label="回到顶部">↑</button>
     </transition>
+    <el-dialog v-model="showActivate" title="输入激活码" width="90%" style="max-width: 420px">
+      <el-input
+        v-model="inputCode"
+        placeholder="粘贴激活码，形如 PL0001.xxxxx"
+        @keyup.enter="activateCode"
+      />
+      <template #footer>
+        <el-button @click="showActivate = false">取消</el-button>
+        <el-button type="primary" :loading="activating" @click="activateCode">激活</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -138,6 +173,7 @@ import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import confetti from 'canvas-confetti' // 动效库
+import { verifyCode, getSavedCode, saveCode, restorePro } from './license'
 
 const tabs = [
   { key: 'record', label: '记录', disabled: false },
@@ -432,6 +468,7 @@ function markBackup() {
 
 // 初始进来时，如果当前就在图表页，先渲染一次
 onMounted(async () => {
+  pro.value = await restorePro()
   if (currentTab.value === 'chart') {
     await nextTick()
     renderCharts()
@@ -467,6 +504,40 @@ function scrollToTop() {
 }
 onMounted(() => window.addEventListener('scroll', onScroll))
 onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
+
+// ---- 付费解锁 ----
+const pro = ref(false)
+const showActivate = ref(false)
+const inputCode = ref('')
+const activating = ref(false)
+const PURCHASE_LINK = 'https://afdian.com/item/54903ff6cd4c11f1bf2952540025c377'   // ← 以后换成你的发卡购买页链接
+
+function goPurchase() {
+  window.open(PURCHASE_LINK, '_blank')
+}
+async function activateCode() {
+  if (!inputCode.value.trim()) {
+    ElMessage.warning('请输入激活码')
+    return
+  }
+  activating.value = true
+  const ok = await verifyCode(inputCode.value)
+  activating.value = false
+  if (ok) {
+    saveCode(inputCode.value.trim())
+    pro.value = true
+    showActivate.value = false
+    inputCode.value = ''
+    ElMessage.success('激活成功，已解锁全部 Pro 功能 🎉')
+    successAction()                       // 复用你的彩带庆祝
+    if (currentTab.value === 'chart') {
+      await nextTick()
+      renderCharts()
+    }
+  } else {
+    ElMessage.error('激活码无效，请检查后重试')
+  }
+}
 </script>
 
 <style scoped>
@@ -727,6 +798,23 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   font-size: 13px;
 }
 .backup-tip-btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+.pro-badge {
+  padding: 3px 10px;
+  background: linear-gradient(135deg, #ffd666, #ffa940);
+  color: #7a4400;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.lock-card {
+  text-align: center;
+  padding: 60px 20px;
+}
+.lock-icon { font-size: 48px; margin-bottom: 12px; }
+.lock-card h3 { margin: 0 0 8px; font-size: 19px; }
+.lock-card p { color: #909399; font-size: 14px; margin: 0 0 24px; }
+.lock-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
 /* ================= 手机端 ================= */
 @media (max-width: 640px) {
