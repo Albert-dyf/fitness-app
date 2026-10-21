@@ -13,6 +13,17 @@
       </nav>
     </header>
 
+    <!-- 备份提醒 -->
+    <transition name="fade">
+      <div v-if="needBackupTip" class="backup-tip">
+        <span>⚠️ {{ backupTipText }}，记录只存在本浏览器，清缓存或换设备会丢失，建议导出一份备份。</span>
+        <div class="backup-tip-btns">
+          <el-button size="small" type="warning" @click="exportData">立即备份</el-button>
+          <el-button size="small" text @click="hideBackupTip = true">稍后</el-button>
+        </div>
+      </div>
+    </transition>
+
     <!-- 记录视图 -->
     <section v-if="currentTab === 'record'" class="panel">
       <!-- ① 今天 -->
@@ -337,14 +348,41 @@ function isTrained(dayStr) {
 }
 
 // 导入导出
-function exportData() {
-  const data = JSON.stringify(workoutList.value, null, 2) // 缩进2格，方便人看
+async function exportData() {
+  const data = JSON.stringify(workoutList.value, null, 2)
+  const fileName = `fitness-backup-${new Date().toISOString().slice(0, 10)}.json`
+
+  // ① 支持 File System Access API（Chrome/Edge）：能准确知道是否真的保存
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [{ description: 'JSON 备份', accept: { 'application/json': ['.json'] } }]
+      })
+      // 用户确实选了位置，才执行写入
+      const writable = await handle.createWritable()
+      await writable.write(data)
+      await writable.close()        // 到这里文件已落盘
+      markBackup()                  // ✅ 真正保存成功才更新时间
+      ElMessage.success('备份已保存')
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        // 用户点了"取消"——什么都不做，不更新备份时间
+        return
+      }
+      ElMessage.warning('保存失败，请重试')
+    }
+    return
+  }
+
+  // ② 不支持的浏览器（Safari 等）：退回老方案，无法感知取消
   const blob = new Blob([data], { type: 'application/json' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = `fitness-backup-${new Date().toISOString().slice(0, 10)}.json` // 带日期文件名
+  link.download = fileName
   link.click()
   URL.revokeObjectURL(link.href)
+  markBackup()   // ⚠️ 降级分支无法确认，仍按"已尝试"处理
 }
 
 function importData(event) {
@@ -357,12 +395,39 @@ function importData(event) {
       if (!Array.isArray(parsed)) throw new Error('格式不对') // 最简单的校验
       workoutList.value = parsed                          // 覆盖现有数据
       // localStorage 由你的 watch 自动更新，不用手动 set
+      markBackup()          // ← 新增：导入后本地已是最新，重置备份计时
       ElMessage.success(`导入成功，共 ${parsed.length} 次记录`)
     } catch (err) {
       ElMessage.warning('导入失败：文件不是有效的备份格式')
     }
   }
   reader.readAsText(file)
+}
+
+// ---- 备份提醒 ----
+const BACKUP_REMIND_DAYS = 7                    // 超过多少天没备份就提醒，可改
+const lastBackup = ref(Number(localStorage.getItem('lastBackupTime')) || 0)
+const hideBackupTip = ref(false)
+
+const needBackupTip = computed(() => {
+  if (hideBackupTip.value) return false
+  if (!workoutList.value.length) return false   // 还没训练数据，不提醒
+  if (!lastBackup.value) return true            // 从没备份过 → 提醒
+  const diffDays = (Date.now() - lastBackup.value) / (1000 * 60 * 60 * 24)
+  return diffDays >= BACKUP_REMIND_DAYS
+})
+
+const backupTipText = computed(() => {
+  if (!lastBackup.value) return '你还没有备份过训练记录'
+  const days = Math.floor((Date.now() - lastBackup.value) / (1000 * 60 * 60 * 24))
+  return `已 ${days} 天没备份训练记录`
+})
+
+// 记录"刚刚备份过"
+function markBackup() {
+  lastBackup.value = Date.now()
+  localStorage.setItem('lastBackupTime', String(lastBackup.value))
+  hideBackupTip.value = true                    // 备份后本条自动消失
 }
 
 // 初始进来时，如果当前就在图表页，先渲染一次
@@ -645,6 +710,23 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 .fade-leave-active { transition: opacity .25s; }
 .fade-enter-from,
 .fade-leave-to { opacity: 0; }
+
+/* 备份提醒条 */
+.backup-tip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #fdf6ec;
+  border: 1px solid #faecd8;
+  border-radius: 10px;
+  color: #b88230;
+  font-size: 13px;
+}
+.backup-tip-btns { display: flex; gap: 4px; flex-shrink: 0; }
 
 /* ================= 手机端 ================= */
 @media (max-width: 640px) {
