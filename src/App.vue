@@ -146,7 +146,6 @@ function dayTotalVolume(day) {
   day.items.forEach(item => {
     total += item.weight * item.group * item.reps
   })
-  today.value.total = total
   return total
 }
 
