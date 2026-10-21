@@ -101,10 +101,12 @@ import * as echarts from 'echarts'
 
 const tabs = [
   { key: 'record', label: '记录', disabled: false },
-  { key: 'chart', label: '图表', disabled: true},
-  { key: 'calendar', label: '日历', disabled: true}
+  { key: 'chart', label: '图表', disabled: false},
+  { key: 'calendar', label: '日历', disabled: false}
 ]
-const currentTab = ref('record')
+// const currentTab = ref('record')
+const currentTab = ref('chart')
+// const currentTab = ref('calendar')
 const currentWeight= ref(0)
 
 // 数据结构:按天分组
@@ -208,9 +210,6 @@ function dayTotalVolume(day) {
   return total
 }
 
-watch(workoutList, (val) => {
-  localStorage.setItem('workoutList', JSON.stringify(val))
-}, { deep: true })
 
 // 初始化today
 function initToday() {
@@ -257,16 +256,18 @@ const lineRef = ref(null)
 const pieRef = ref(null)
 
 function partTrendData() {
-  // 按部位聚合:每个部位每天的总组数
-  const map = {}
-  workoutList.value.forEach(w => {
-    if (!w.part) return
-    if (!map[w.part]) map[w.part] = {}
-    const d = w.date
-    map[w.part][d] = (map[w.part][d] || 0) + (w.group || 0)
+  // 按部位×天聚合:遍历每天里的每一条记录
+  const map = {} // part -> { 日期: 总组数 }
+  workoutList.value.forEach(day => {
+    ;(day.items || []).forEach(item => {
+      if (!item.part) return
+      if (!map[item.part]) map[item.part] = {}
+      const d = day.date
+      const vol = (Number(item.weight) || 0) * (Number(item.group) || 0) * (Number(item.reps) || 0)
+      map[item.part][d] = (map[item.part][d] || 0) + vol
+    })
   })
-  // 收集所有日期
-  const dates = [...new Set(workoutList.value.map(w => w.date))].sort()
+  const dates = [...new Set(workoutList.value.map(day => day.date))].sort()
   const series = Object.keys(map).map(part => ({
     name: part,
     type: 'line',
@@ -278,9 +279,11 @@ function partTrendData() {
 
 function partPieData() {
   const map = {}
-  workoutList.value.forEach(w => {
-    if (!w.part) return
-    map[w.part] = (map[w.part] || 0) + 1
+  workoutList.value.forEach(day => {
+    ;(day.items || []).forEach(item => {
+      if (!item.part) return
+      map[item.part] = (map[item.part] || 0) + 1
+    })
   })
   return Object.keys(map).map(part => ({ name: part, value: map[part] }))
 }
@@ -289,7 +292,7 @@ function renderCharts() {
   if (!lineRef.value || !pieRef.value) return
   const { dates, series } = partTrendData()
   echarts.init(lineRef.value).setOption({
-    title: { text: '各部位训练量趋势(组数)' },
+    title: { text: '各部位训练量趋势(总容量)' },
     tooltip: {},
     legend: {},
     xAxis: { type: 'category', data: dates },
@@ -310,8 +313,21 @@ function renderCharts() {
 // ---- 日历 ----
 const selectedDate = ref(new Date())
 function isTrained(dayStr) {
-  return workoutList.value.some(w => w.date === dayStr)
+  const prefix = dayStr.slice(0, 10)          // '2026-10-21'
+  return workoutList.value.some(w => (w.date || '').slice(0, 10) === prefix)
 }
+
+// 初始进来时，如果当前就在图表页，先渲染一次
+onMounted(async () => {
+  if (currentTab.value === 'chart') {
+    await nextTick()
+    renderCharts()
+  }
+})
+
+watch(workoutList, (val) => {
+  localStorage.setItem('workoutList', JSON.stringify(val))
+}, { deep: true })
 
 watch(currentTab, async (v) => {
   if (v === 'chart') {
