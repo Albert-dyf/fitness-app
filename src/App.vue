@@ -53,7 +53,7 @@
           </template>
         </el-table-column>
       </el-table>
-      <el-button class="mt-4" style="width: 100%" type="warning " text @click="addNewAction()">新增记录</el-button>
+      <el-button class="mt-4" style="width: 100%" type="warning" text @click="addNewAction()">新增记录</el-button>
 
       <header class="header">
         <h1>历史健身记录</h1>
@@ -66,8 +66,8 @@
       <el-table :data="savedDays" border>
         <el-table-column type="expand" prop="id">
           <template #default="props">
-            <div m="4">
-              <p v-for="item in props.row.items" :key="item.id" m="t-0 b-2">
+            <div class="4">
+              <p v-for="item in props.row.items" :key="item.id" class="t-0 b-2">
                 {{ item.part }} 部训练，{{ item.action }}: {{ item.weight }}kg x {{ item.reps }} 次 x {{ item.group }} 组
               </p>
             </div>
