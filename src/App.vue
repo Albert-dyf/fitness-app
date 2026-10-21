@@ -47,7 +47,7 @@
             <el-input v-model="row.group" />
           </template>
         </el-table-column>
-        <el-table-column label="操作">
+        <el-table-column label="操作" width="100">
           <template #default="{ row }">
             <el-button text type="warning" @click="deleteAction(row)">删除</el-button>
           </template>
@@ -75,6 +75,11 @@
         </el-table-column>
         <el-table-column prop="date" label="时间"></el-table-column>
         <el-table-column prop="total" label="总容量"></el-table-column>
+        <el-table-column label="操作" width="100">
+          <template #default="{ row }">
+            <el-button text type="warning" @click="deleteWorkout(row)">删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </section>
 
@@ -101,6 +106,8 @@
 <script setup>
 import { ref, watch, onMounted, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import confetti from 'canvas-confetti' // 动效库
 
 const tabs = [
   { key: 'record', label: '记录', disabled: false },
@@ -147,7 +154,6 @@ function initToday() {
   today.value = {
     id: todayDate(),
     date: todayDate(),
-    saved: false,
     total: 0,
     items: []
   }
@@ -160,9 +166,9 @@ function addNewAction() {
     id: Date.now().toString(),
     part:'',
     action: '',
-    weight: 0,
-    group: 0,
-    reps: 0
+    weight: '',
+    group: '',
+    reps: ''
   })
 }
 
@@ -170,17 +176,63 @@ function deleteAction(row) {
   today.value.items = today.value.items.filter(w => w.id !== row.id)
 }
 
-function deleteWorkout(row) {
-  workoutList.value = workoutList.value.filter(w => w.id !== row.id)
+async function deleteWorkout(row) {
+  try {
+    // 弹确认框，用户点"确定"才继续
+    await ElMessageBox.confirm(
+      `确定要删除 ${row.date} 这一次的训练记录吗？删除后无法恢复`,
+      '删除确认',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    // 用户确认了，才真正删
+    workoutList.value = workoutList.value.filter(w => w.id !== row.id)
+    ElMessage.success('已删除')
+  } catch (e) {
+    // 用户点了取消，什么都不做(confirm 取消会抛错，这里吃掉它)
+  }
 }
 
 //保存today
 function addWorkout(){
-  console.log(workoutList)
-  workoutList.value.push(today.value)
+  // 第1层：当天有没有记录
+  if (!today.value.items || today.value.items.length === 0) {
+    ElMessage.warning('今天还没有任何训练记录，先添加一条再保存')
+    return
+  }
+  // 第2层：逐条检查字段
+  for (const it of today.value.items) {
+    if (!it.part || !it.action) {
+      ElMessage.warning('「部位」和「动作」都要填')
+      return
+    }
+    if (!(Number(it.weight) > 0) || !(Number(it.group) > 0) || !(Number(it.reps) > 0)) {
+      ElMessage.warning(`「${it.action}」的重量/组数/次数要填大于0的数字`)
+      return
+    }
+  }
+  // 第3层：深拷贝后入列，重算 total
+  const toSave = {
+    ...today.value,
+    id: today.value.id || Date.now().toString(),
+    total: dayTotalVolume(today.value),
+    items: today.value.items.map(it => ({ ...it })) // 每项也拷贝，切断引用
+  }
+  workoutList.value.push(toSave)
+  ElMessage.success('已保存')
+  successAction()
   initToday()
 }
 
+// 成功动效
+function successAction() {
+  confetti({
+    particleCount: 120,      // 彩带数量
+    angle: 90,               // 90度 = 垂直朝上喷(从底部)
+    spread: 60,              // 喷射角度范围
+    startVelocity: 70,       // 初速度，越大喷越高
+    origin: { y: 0.9, x: 0.5 } // 起点:底部90%高度、水平居中
+  })
+}
 
 // ---- 图表 ----
 const lineRef = ref(null)
@@ -269,9 +321,9 @@ function importData(event) {
       if (!Array.isArray(parsed)) throw new Error('格式不对') // 最简单的校验
       workoutList.value = parsed                          // 覆盖现有数据
       // localStorage 由你的 watch 自动更新，不用手动 set
-      alert(`导入成功，共 ${parsed.length} 天记录`)
+      ElMessage.success(`导入成功，共 ${parsed.length} 次记录`)
     } catch (err) {
-      alert('导入失败：文件不是有效的备份格式')
+      ElMessage.warning('导入失败：文件不是有效的备份格式')
     }
   }
   reader.readAsText(file)
