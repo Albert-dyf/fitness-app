@@ -283,7 +283,11 @@ function partPieData() {
 function renderCharts() {
   if (!lineRef.value || !pieRef.value) return
   const { dates, series } = partTrendData()
-  echarts.init(lineRef.value).setOption({
+    // 先取已有实例，取不到再 init
+  const line = echarts.getInstanceByDom(lineRef.value) || echarts.init(lineRef.value)
+  const pie  = echarts.getInstanceByDom(pieRef.value)  || echarts.init(pieRef.value)
+
+  line.setOption({
     title: { text: '各部位训练量趋势(总容量)' },
     tooltip: {},
     legend: {},
@@ -291,7 +295,8 @@ function renderCharts() {
     yAxis: { type: 'value' },
     series
   })
-  echarts.init(pieRef.value).setOption({
+
+  pie.setOption({
     title: { text: '各部位记录占比' },
     tooltip: { trigger: 'item' },
     series: [{
