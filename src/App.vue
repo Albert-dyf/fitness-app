@@ -129,9 +129,11 @@ const today = ref({
   items: []
 })
 
-// 今天的日期字符串,如 '2026-09-25'
+// 今天的日期字符串,如 '2026-09-25 17:41'
 function todayDate() {
-  return new Date().toISOString().slice(0, 16).replace('T', ' ')
+  const d = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 // 取所有已保存的天(按日期倒序,最近在上)
